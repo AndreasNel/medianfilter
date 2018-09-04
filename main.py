@@ -12,22 +12,27 @@ TEMPLATE = [
     [1, 1, 1],
     [0, 1, 0],
 ]
+CENTER = (1, 1)
+print("Center point: {}".format(CENTER))
+INDICES = [(y, x) for x in range(len(TEMPLATE)) for y in range(len(TEMPLATE[x])) if TEMPLATE[x][y] and (y, x) != CENTER]
+print("Mask: {}".format(INDICES))
+GRAY_LEVELS = [-1 for _ in range(len(TEMPLATE[0]))]
+for idx, i in enumerate(TEMPLATE):
+    for j in range(len(i)):
+        GRAY_LEVELS[j] += TEMPLATE[idx][j]
+print("Gray levels: {}".format(GRAY_LEVELS))
 
 
 def minkowski_erosion(image):
     maxw = image.width
     maxh = image.height
     result = image.copy()
-    gray_levels = [-1 for _ in TEMPLATE[0]]
-    for idx, i in enumerate(TEMPLATE):
-        for j in range(len(i)):
-            gray_levels[j] += TEMPLATE[idx][j]
-    print(gray_levels)
-    for x in range(len(TEMPLATE[0]), maxw - len(TEMPLATE[0])):
-        for y in range(len(TEMPLATE[0]), maxh - len(TEMPLATE)):
-            box = (x - len(TEMPLATE[0]), y - len(TEMPLATE), x + len(TEMPLATE[0]) + 1, y + len(TEMPLATE) + 1)
+    for y in range(len(TEMPLATE), maxw - len(TEMPLATE)):
+        for x in range(len(TEMPLATE[0]), maxh - len(TEMPLATE[0])):
+            box = (x - len(TEMPLATE[0]), y - len(TEMPLATE), x, y)
             cropped = image.crop(box)
-            # TODO finish this
+            new_gray_value = max(0, min(cropped.getpixel(i) - GRAY_LEVELS[i[0]] for i in INDICES))
+            result.putpixel((x, y), new_gray_value)
     return result
 
 
@@ -35,16 +40,12 @@ def minkowski_dilation(image):
     maxw = image.width
     maxh = image.height
     result = image.copy()
-    gray_levels = [-1 for _ in TEMPLATE[0]]
-    for idx, i in enumerate(TEMPLATE):
-        for j in range(len(i)):
-            gray_levels[j] += TEMPLATE[idx][j]
-    print(gray_levels)
-    for x in range(len(TEMPLATE[0]), maxw - len(TEMPLATE[0])):
-        for y in range(len(TEMPLATE[0]), maxh - len(TEMPLATE)):
-            box = (x - len(TEMPLATE[0]), y - len(TEMPLATE), x + len(TEMPLATE[0]) + 1, y + len(TEMPLATE) + 1)
+    for y in range(len(TEMPLATE), maxw - len(TEMPLATE)):
+        for x in range(len(TEMPLATE[0]), maxh - len(TEMPLATE[0])):
+            box = (x - len(TEMPLATE[0]), y - len(TEMPLATE), x, y)
             cropped = image.crop(box)
-            # TODO finish this
+            new_gray_value = min(255, max(cropped.getpixel(i) + GRAY_LEVELS[i[0]] for i in INDICES))
+            result.putpixel((x, y), new_gray_value)
     return result
 
 
@@ -87,8 +88,8 @@ if __name__ == '__main__':
         print("READING {}".format(filename))
         image = Image.open("{}/{}".format(IMAGE_DIR, filename)).convert('L')
         result = median_filter(image)
-        result.convert('RGB').save('results_{}'.format(filename))
         eroded = minkowski_erosion(result)
-        eroded.convert('RGB').save('eroded_{}'.format(filename))
         dilated = minkowski_dilation(result)
+        result.convert('RGB').save('results_{}'.format(filename))
+        eroded.convert('RGB').save('eroded_{}'.format(filename))
         dilated.convert('RGB').save('dilated_{}'.format(filename))
